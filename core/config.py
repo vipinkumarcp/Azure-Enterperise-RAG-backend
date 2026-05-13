@@ -14,5 +14,13 @@ class Settings:
 
     API_AUDIENCE = os.getenv("API_AUDIENCE")
 
+    AZURE_OPENAI_ENDPOINT = os.getenv(
+        "AZURE_OPENAI_ENDPOINT"
+    )
+
+    AZURE_OPENAI_DEPLOYMENT = os.getenv(
+        "AZURE_OPENAI_DEPLOYMENT"
+    )
+
 
 settings = Settings()
