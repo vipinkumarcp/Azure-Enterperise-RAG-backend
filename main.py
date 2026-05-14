@@ -9,7 +9,7 @@ from core.auth import verify_token
 from helpers.openai_client import client
 from pydantic import BaseModel
 from azure.identity import DefaultAzureCredential
-
+from helpers.retrieval import retrieve_documents
 
 credential = DefaultAzureCredential()
 # Create the main FastAPI app
@@ -64,30 +64,41 @@ async def get_azure_token():
 class ChatRequest(BaseModel):
     message: str
 
+
+
 @app.post("/chat")
 async def chat(
     request: ChatRequest,
     user=Depends(verify_token)
 ):
 
+    docs = retrieve_documents(request.message)
+
+    context = "\n".join(docs)
+
     response = client.chat.completions.create(
         model=settings.AZURE_OPENAI_DEPLOYMENT,
         messages=[
             {
                 "role": "system",
-                "content": "You are an enterprise AI assistant."
+                "content": f"""
+You are a RAG assistant.
+
+Use ONLY this context:
+
+{context}
+"""
             },
             {
                 "role": "user",
                 "content": request.message
             }
-        ],
-        temperature=0.7,
-        max_tokens=500
+        ]
     )
 
     return {
-        "response": response.choices[0].message.content
+        "response": response.choices[0].message.content,
+        "sources": docs
     }
 
 

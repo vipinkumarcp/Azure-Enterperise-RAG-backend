@@ -21,6 +21,16 @@ class Settings:
     AZURE_OPENAI_DEPLOYMENT = os.getenv(
         "AZURE_OPENAI_DEPLOYMENT"
     )
+    AZURE_SEARCH_ENDPOINT=os.getenv(
+        "AZURE_SEARCH_ENDPOINT"
+    )
+
+    AZURE_SEARCH_INDEX=os.getenv(
+        "AZURE_SEARCH_INDEX"
+    )
+    AZURE_OPENAI_EMBEDDING_DEPLOYMENT = os.getenv(
+    "AZURE_OPENAI_EMBEDDING_DEPLOYMENT"
+    )
 
 
 settings = Settings()
