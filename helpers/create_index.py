@@ -1,18 +1,27 @@
-from azure.search.documents.indexes import SearchIndexClient
+from core.config import settings
+
+import os
+
+from dotenv import load_dotenv
+
+from azure.identity import DefaultAzureCredential
+
+from azure.search.documents.indexes import (
+    SearchIndexClient,
+)
+
 from azure.search.documents.indexes.models import (
     SearchIndex,
     SearchField,
     SearchFieldDataType,
-    SearchableField,
     SimpleField,
+    SearchableField,
     VectorSearch,
     HnswAlgorithmConfiguration,
-    VectorSearchProfile
+    VectorSearchProfile,
 )
 
-from azure.identity import DefaultAzureCredential
-
-from core.config import settings
+load_dotenv()
 
 credential = DefaultAzureCredential()
 
@@ -21,49 +30,57 @@ index_client = SearchIndexClient(
     credential=credential
 )
 
-index = SearchIndex(
-    name=settings.AZURE_SEARCH_INDEX,
 
-    fields=[
+fields = [
 
-        SimpleField(
-            name="id",
-            type=SearchFieldDataType.String,
-            key=True
+    SimpleField(
+        name="id",
+        type=SearchFieldDataType.String,
+        key=True,
+    ),
+
+    SearchableField(
+        name="content",
+        type=SearchFieldDataType.String,
+    ),
+
+    SearchField(
+        name="contentVector",
+        type=SearchFieldDataType.Collection(
+            SearchFieldDataType.Single
         ),
+        searchable=True,
+        vector_search_dimensions=1536,
+        vector_search_profile_name="default",
+    ),
 
-        SearchableField(
-            name="content",
-            type=SearchFieldDataType.String
-        ),
+    SearchableField(
+        name="sourcefile",
+        type=SearchFieldDataType.String,
+        filterable=True,
+    ),
+]
 
-        SearchField(
-            name="contentVector",
-            type=SearchFieldDataType.Collection(
-                SearchFieldDataType.Single
-            ),
-            searchable=True,
-            vector_search_dimensions=1536,
-            vector_search_profile_name="vector-profile"
+vector_search = VectorSearch(
+    algorithms=[
+        HnswAlgorithmConfiguration(
+            name="default-hnsw"
         )
     ],
-
-    vector_search=VectorSearch(
-        algorithms=[
-            HnswAlgorithmConfiguration(
-                name="hnsw-config"
-            )
-        ],
-
-        profiles=[
-            VectorSearchProfile(
-                name="vector-profile",
-                algorithm_configuration_name="hnsw-config"
-            )
-        ]
-    )
+    profiles=[
+        VectorSearchProfile(
+            name="default",
+            algorithm_configuration_name="default-hnsw",
+        )
+    ],
 )
 
-result = index_client.create_or_update_index(index)
+index = SearchIndex(
+    name=os.getenv("AZURE_SEARCH_INDEX"),
+    fields=fields,
+    vector_search=vector_search,
+)
 
-print(f"Index created: {result.name}")
+index_client.create_or_update_index(index)
+
+print("Index created successfully")

@@ -4,9 +4,11 @@ from helpers.search_client import search_client
 from helpers.embeddings import generate_embedding
 
 
-def retrieve_documents(query: str):
 
-    embedding = generate_embedding(query)
+
+async def retrieve_documents(query: str):
+
+    embedding = await generate_embedding(query)
 
     vector_query = VectorizedQuery(
         vector=embedding,

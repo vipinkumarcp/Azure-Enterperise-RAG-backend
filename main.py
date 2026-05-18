@@ -10,6 +10,11 @@ from helpers.openai_client import client
 from pydantic import BaseModel
 from azure.identity import DefaultAzureCredential
 from helpers.retrieval import retrieve_documents
+from fastapi.responses import StreamingResponse
+import json
+
+from routes.upload import router as upload_router
+
 
 credential = DefaultAzureCredential()
 # Create the main FastAPI app
@@ -39,6 +44,7 @@ async def say_hi():
 # Include the router in the app
 app.include_router(router)
 app.include_router(health_router)
+app.include_router(upload_router)
 
 @app.get("/protected")
 async def protected_route(
@@ -65,19 +71,17 @@ class ChatRequest(BaseModel):
     message: str
 
 
-
-@app.post("/chat")
-async def chat(
-    request: ChatRequest,
-    user=Depends(verify_token)
+async def stream_chat_response(
+    message: str
 ):
 
-    docs = retrieve_documents(request.message)
+    docs = await retrieve_documents(message)
 
     context = "\n".join(docs)
 
-    response = client.chat.completions.create(
+    stream = await client.chat.completions.create(
         model=settings.AZURE_OPENAI_DEPLOYMENT,
+
         messages=[
             {
                 "role": "system",
@@ -91,16 +95,36 @@ Use ONLY this context:
             },
             {
                 "role": "user",
-                "content": request.message
+                "content": message
             }
-        ]
+        ],
+
+        stream=True
     )
 
-    return {
-        "response": response.choices[0].message.content,
-        "sources": docs
-    }
+    async for chunk in stream:
 
+        if chunk.choices:
+
+            delta = chunk.choices[0].delta
+
+            if delta.content:
+
+                yield json.dumps({
+                    "token": delta.content
+                }) + "\n"
+
+
+@app.post("/chat")
+async def chat(
+    request: ChatRequest,
+    user=Depends(verify_token)
+):
+
+    return StreamingResponse(
+        stream_chat_response(request.message),
+        media_type="application/json"
+    )
 
 
 if __name__ == "__main__":
